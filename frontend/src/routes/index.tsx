@@ -1,0 +1,102 @@
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
+import MainLayout from '../components/layout/MainLayout';
+import { CircularProgress, Box } from '@mui/material';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
+
+// Lazy-loaded pages
+const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
+const Login = lazy(() => import('../features/auth/components/Login'));
+const Chat = lazy(() => import('../features/chat/components/Chat'));
+const Users = lazy(() => import('../features/users/Users'));
+const Companies = lazy(() => import('../features/companies/Companies'));
+const Groups = lazy(() => import('../features/groups/Groups'));
+const Contacts = lazy(() => import('../features/contacts/Contacts'));
+const NotFound = lazy(() => import('../components/shared/NotFound'));
+
+// Loading component
+const LoadingFallback = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+    <CircularProgress />
+  </Box>
+);
+
+// Router configuration
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <Login />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Dashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'chat',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Chat />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Users />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'companies',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Companies />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'groups',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Groups />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'contacts',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Contacts />
+          </Suspense>
+        ),
+      },
+    ],
+  },
+  {
+    path: '*',
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <NotFound />
+      </Suspense>
+    ),
+  },
+]);
+
+export const AppRouter = () => <RouterProvider router={router} />;
