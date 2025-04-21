@@ -30,11 +30,12 @@ const Dashboard = () => {
       <Grid container spacing={3}>
         {/* Cards de estatísticas */}
         {stats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid key={index} xs={12} sm={6} md={3}>
             <Paper
               elevation={2}
               sx={{
                 p: 2,
+                m: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -54,8 +55,8 @@ const Dashboard = () => {
         ))}
 
         {/* Chats recentes */}
-        <Grid item xs={12} md={6}>
-          <Card>
+        <Grid xs={12} md={6}>
+          <Card sx={{ m: 1 }}>
             <CardHeader title="Conversas Recentes" />
             <CardContent>
               {recentChats.map((chat, index) => (
@@ -84,7 +85,7 @@ const Dashboard = () => {
         </Grid>
 
         {/* Resumo do sistema */}
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
           <Card>
             <CardHeader title="Informações do Sistema" />
             <CardContent>

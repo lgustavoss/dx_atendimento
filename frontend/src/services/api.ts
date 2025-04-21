@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// Usar caminho relativo ao utilizar proxy
+const API_URL = '/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,

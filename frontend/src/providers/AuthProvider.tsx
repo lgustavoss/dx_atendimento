@@ -1,12 +1,21 @@
 import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import axios from 'axios';
+import api from '../services/api';
+
+interface User {
+  id: number;
+  email: string;
+  nome: string;
+  is_active: boolean;
+  is_superuser: boolean;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
-  user: any | null;
+  user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -15,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   login: async () => false,
   logout: () => {},
+  loading: true,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -25,42 +35,67 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [user, setUser] = useState<any | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Carrega o usuário se o token existir
-    if (token) {
-      // Aqui você pode fazer uma requisição para obter os dados do usuário
-      // Por enquanto, vamos simular um usuário
-      setUser({ id: 1, email: 'admin@example.com', nome: 'Admin' });
-      setIsAuthenticated(true);
-    }
+    const initAuth = async () => {
+      if (token) {
+        try {
+          await getCurrentUser();
+        } catch (error) {
+          console.error('Erro ao inicializar autenticação');
+          logout();
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, [token]);
+
+  const getCurrentUser = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await api.get('/auth/me');
+      // Remover logs de informações sensíveis
+      setUser(response.data);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Erro ao obter dados do usuário');
+      logout();
+      throw error;
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Aqui deveria ser uma chamada real à API, mas vamos simular por enquanto
-      if (email === 'admin@example.com' && password === 'admin') {
-        // Simular um token JWT
-        const simulatedToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFkbWluIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-        
-        // Em produção, faríamos uma chamada real:
-        // const response = await axios.post('/api/v1/auth/login', {
-        //   username: email,
-        //   password: password,
-        // });
-        // const { access_token } = response.data;
-        
-        localStorage.setItem('token', simulatedToken);
-        setToken(simulatedToken);
-        setUser({ id: 1, email, nome: 'Admin' });
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
+      // Formato exato esperado pelo OAuth2PasswordRequestForm do FastAPI
+      const data = `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+      
+      const response = await api.post('/auth/login', data, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+      
+      // Remover log de informações sensíveis
+      const { access_token } = response.data;
+      
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+      
+      // Obter dados do usuário
+      await getCurrentUser();
+      
+      return true;
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('Erro no login');
       return false;
     }
   };
@@ -73,7 +108,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, token, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, token, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

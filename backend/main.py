@@ -16,20 +16,10 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Configurar CORS
-origins = os.getenv(
-    "BACKEND_CORS_ORIGINS", 
-    '["http://localhost:3000", "http://localhost:8080"]'
-).replace("'", '"')
-try:
-    import json
-    origins_list = json.loads(origins)
-except json.JSONDecodeError:
-    origins_list = ["http://localhost:3000", "http://localhost:8080"]
-
+# Configurar CORS de forma explícita
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins_list,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
