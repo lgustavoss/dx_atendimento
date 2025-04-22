@@ -40,7 +40,10 @@ const Login = () => {
     try {
       const success = await login(email, password);
       if (success) {
-        navigate(from, { replace: true });
+        // Adicione um pequeno atraso para garantir que o estado seja atualizado
+        setTimeout(() => {
+          navigate(from, { replace: true });
+        }, 100);
       } else {
         setError('Email ou senha inválidos');
       }

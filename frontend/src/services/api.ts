@@ -15,7 +15,13 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
+      // Garantir que o token seja aplicado a TODAS as requisições
       config.headers.Authorization = `Bearer ${token}`;
+      // Configuração global do cabeçalho para manter entre navegações
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Remover para produção - usar apenas para debug
+      console.log(`Requisição autenticada para: ${config.url}`);
     }
     return config;
   },
@@ -28,10 +34,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Se receber um 401 (não autorizado), direciona para o login
+    // Verifica se é um erro 401 e se não estamos em uma operação em andamento
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Verificar se esta requisição é uma operação de login
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      
+      // Apenas redireciona se não for uma tentativa de login
+      if (!isLoginRequest && !window.location.pathname.includes('/login')) {
+        console.log('Token inválido/expirado, redirecionando para login');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

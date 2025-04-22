@@ -62,8 +62,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!token) return;
     
     try {
-      const response = await api.get('/auth/me');
-      // Remover logs de informações sensíveis
+      // Definir token global no Axios
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      const response = await api.get('/auth/me', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      // Verificação extra para garantir que o usuário é válido
+      if (!response.data) {
+        throw new Error('Dados do usuário inválidos');
+      }
+      
       setUser(response.data);
       setIsAuthenticated(true);
     } catch (error) {

@@ -3,6 +3,8 @@ import { Suspense, lazy } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { CircularProgress, Box } from '@mui/material';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
+import AdminRoute from '../components/admin/AdminRoute';
+import Unauthorized from '../components/shared/Unauthorized';
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
@@ -58,17 +60,21 @@ const router = createBrowserRouter([
       {
         path: 'users',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Users />
-          </Suspense>
+          <AdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <Users />
+            </Suspense>
+          </AdminRoute>
         ),
       },
       {
         path: 'companies',
         element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Companies />
-          </Suspense>
+          <AdminRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <Companies />
+            </Suspense>
+          </AdminRoute>
         ),
       },
       {
@@ -94,6 +100,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<LoadingFallback />}>
         <NotFound />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/unauthorized',
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <Unauthorized />
       </Suspense>
     ),
   },

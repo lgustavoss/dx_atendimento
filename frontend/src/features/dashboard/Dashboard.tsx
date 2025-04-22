@@ -1,10 +1,11 @@
-import { Grid, Paper, Typography, Box, Card, CardContent, CardHeader } from '@mui/material';
+import { Grid, Paper, Typography, Box, Card, CardContent, CardHeader, Button } from '@mui/material';
 import {
   PeopleAlt as UsersIcon,
   Business as CompaniesIcon,
   Category as GroupsIcon,
   Message as MessagesIcon,
 } from '@mui/icons-material';
+import api from '../../services/api';
 
 const Dashboard = () => {
   const stats = [
@@ -21,11 +22,29 @@ const Dashboard = () => {
     { name: 'Ana Costa', message: 'Meu produto chegou com defeito', time: '2h atrás' },
   ];
 
+  const testUsersAPI = async () => {
+    try {
+      const response = await api.get('/users/');
+      console.log('Resposta da API de usuários:', response.data);
+    } catch (error) {
+      console.error('Erro ao chamar API de usuários:', error);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
         Dashboard
       </Typography>
+      
+      {/* Botão de teste - remover após debug */}
+      <Button 
+        variant="outlined" 
+        onClick={testUsersAPI} 
+        sx={{ mb: 2 }}
+      >
+        Testar API de Usuários
+      </Button>
 
       <Grid container spacing={3}>
         {/* Cards de estatísticas */}
