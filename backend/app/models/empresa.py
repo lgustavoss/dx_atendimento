@@ -13,7 +13,13 @@ class Empresa(Base):
     grupo_id = Column(Integer, ForeignKey("grupos.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Campos de auditoria
+    usuario_cadastro_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    usuario_alteracao_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Relacionamentos
     grupo = relationship("Grupo", back_populates="empresas")
     contatos = relationship("Contato", back_populates="empresa")
+    usuario_cadastro = relationship("User", foreign_keys=[usuario_cadastro_id])
+    usuario_alteracao = relationship("User", foreign_keys=[usuario_alteracao_id])

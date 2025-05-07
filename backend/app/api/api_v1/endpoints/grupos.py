@@ -34,6 +34,9 @@ def criar_grupo(
     Cria um novo grupo.
     """
     grupo = Grupo(**grupo_in.model_dump())
+    # Adicionar informação de auditoria
+    grupo.usuario_cadastro_id = current_user.id
+    
     db.add(grupo)
     db.commit()
     db.refresh(grupo)
@@ -61,6 +64,9 @@ def atualizar_grupo(
     update_data = grupo_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(grupo, field, value)
+    
+    # Adicionar informação de auditoria
+    grupo.usuario_alteracao_id = current_user.id
     
     db.add(grupo)
     db.commit()

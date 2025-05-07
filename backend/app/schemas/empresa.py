@@ -2,6 +2,14 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
+# Definição do schema de usuário simplificado para auditoria
+class UsuarioAuditoria(BaseModel):
+    id: int
+    nome: str
+    
+    class Config:
+        from_attributes = True
+
 # Schemas compartilhados
 class EmpresaBase(BaseModel):
     nome: str
@@ -21,10 +29,13 @@ class EmpresaInDBBase(EmpresaBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    usuario_cadastro_id: Optional[int] = None
+    usuario_alteracao_id: Optional[int] = None
     
     class Config:
         from_attributes = True
 
 # Schema para resposta pública
 class Empresa(EmpresaInDBBase):
-    pass
+    usuario_cadastro: Optional[UsuarioAuditoria] = None
+    usuario_alteracao: Optional[UsuarioAuditoria] = None

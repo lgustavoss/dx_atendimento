@@ -30,17 +30,18 @@ interface Column {
   format?: (value: any) => string;
 }
 
-interface DataTableProps {
+interface DataTableProps<T> {
   columns: Column[];
-  data: any[];
+  data: T[];
   title: string;
   onAdd: () => void;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
-  searchField?: string;
+  searchField?: keyof T;
+  renderCustomActions?: (id: number) => React.ReactNode;
 }
 
-const DataTable = ({ columns, data, title, onAdd, onEdit, onDelete, searchField }: DataTableProps) => {
+const DataTable = <T,>({ columns, data, title, onAdd, onEdit, onDelete, searchField, renderCustomActions }: DataTableProps<T>) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,7 +106,7 @@ const DataTable = ({ columns, data, title, onAdd, onEdit, onDelete, searchField 
                   {column.label}
                 </TableCell>
               ))}
-              <TableCell align="right">Ações</TableCell>
+              <TableCell align="center">Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -118,11 +119,16 @@ const DataTable = ({ columns, data, title, onAdd, onEdit, onDelete, searchField 
                       const value = row[column.id];
                       return (
                         <TableCell key={column.id} align={column.align}>
-                          {column.format ? column.format(value) : value}
+                          {column.format 
+                            ? (typeof column.format === 'function' 
+                                ? (column.format(row[column.id], row)) 
+                                : column.format) 
+                            : row[column.id]}
                         </TableCell>
                       );
                     })}
                     <TableCell align="right">
+                      {renderCustomActions && renderCustomActions(row.id)}
                       <Tooltip title="Editar">
                         <IconButton onClick={() => onEdit(row.id)}>
                           <EditIcon />

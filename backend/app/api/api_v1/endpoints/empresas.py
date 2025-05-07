@@ -40,33 +40,36 @@ def criar_empresa(
             detail="CNPJ já cadastrado no sistema.",
         )
     empresa = Empresa(**empresa_in.model_dump())
+    # Adicionar informação de auditoria
+    empresa.usuario_cadastro_id = current_user.id
+    
     db.add(empresa)
     db.commit()
     db.refresh(empresa)
     return empresa
 
 
-@router.put("/{empresa_id}", response_model=EmpresaSchema)
-def atualizar_empresa(
+@router.put("/{id}", response_model=EmpresaSchema)
+def update_empresa(
     *,
     db: Session = Depends(get_db),
-    empresa_id: int,
+    id: int,
     empresa_in: EmpresaUpdate,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser)
 ) -> Any:
     """
-    Atualiza uma empresa.
+    Atualizar empresa.
     """
-    empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+    empresa = db.query(Empresa).filter(Empresa.id == id).first()
     if not empresa:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa não encontrada",
-        )
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
     
     update_data = empresa_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(empresa, field, value)
+    
+    # Adicionar informação de auditoria
+    empresa.usuario_alteracao_id = current_user.id
     
     db.add(empresa)
     db.commit()
