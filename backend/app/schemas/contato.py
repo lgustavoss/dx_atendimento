@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
+from app.schemas.empresa import Empresa as EmpresaSchema
 
 # Schemas compartilhados
 class ContatoBase(BaseModel):
@@ -28,4 +29,7 @@ class ContatoInDBBase(ContatoBase):
 
 # Schema para resposta pública
 class Contato(ContatoInDBBase):
-    pass
+    empresa: Optional[EmpresaSchema] = None
+    
+    class Config:
+        from_attributes = True

@@ -1,6 +1,6 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_db, get_current_user
 from app.models.contato import Contato
@@ -19,7 +19,8 @@ def listar_contatos(
     """
     Recupera todos os contatos.
     """
-    contatos = db.query(Contato).offset(skip).limit(limit).all()
+    # Usar joinedload para carregar a relação com empresa
+    contatos = db.query(Contato).options(joinedload(Contato.empresa)).offset(skip).limit(limit).all()
     return contatos
 
 

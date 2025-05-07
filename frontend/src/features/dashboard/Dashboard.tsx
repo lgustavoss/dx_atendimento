@@ -1,4 +1,4 @@
-import { Grid, Paper, Typography, Box, Card, CardContent, CardHeader, Button } from '@mui/material';
+import { Grid, Paper, Typography, Box } from '@mui/material';
 import {
   PeopleAlt as UsersIcon,
   Business as CompaniesIcon,
@@ -6,119 +6,77 @@ import {
   Message as MessagesIcon,
 } from '@mui/icons-material';
 import api from '../../services/api';
+import { useState, useEffect } from 'react';
 
 const Dashboard = () => {
-  const stats = [
-    { title: 'Usuários', value: 8, icon: <UsersIcon fontSize="large" color="primary" /> },
-    { title: 'Empresas', value: 12, icon: <CompaniesIcon fontSize="large" color="secondary" /> },
-    { title: 'Grupos', value: 5, icon: <GroupsIcon fontSize="large" color="success" /> },
-    { title: 'Mensagens', value: 1458, icon: <MessagesIcon fontSize="large" color="info" /> },
-  ];
+  const [stats, setStats] = useState([
+    { title: 'Usuários', value: 0, icon: <UsersIcon fontSize="large" color="primary" /> },
+    { title: 'Empresas', value: 0, icon: <CompaniesIcon fontSize="large" color="secondary" /> },
+    { title: 'Grupos', value: 0, icon: <GroupsIcon fontSize="large" color="success" /> },
+    { title: 'Chats', value: 0, icon: <MessagesIcon fontSize="large" color="info" /> }, // Alterado de "Mensagens" para "Chats"
+  ]);
 
-  const recentChats = [
-    { name: 'João Silva', message: 'Preciso de ajuda com meu pedido', time: '5min atrás' },
-    { name: 'Maria Souza', message: 'Quando será entregue?', time: '15min atrás' },
-    { name: 'Pedro Almeida', message: 'Obrigado pelo atendimento', time: '1h atrás' },
-    { name: 'Ana Costa', message: 'Meu produto chegou com defeito', time: '2h atrás' },
-  ];
-
-  const testUsersAPI = async () => {
-    try {
-      const response = await api.get('/users/');
-      console.log('Resposta da API de usuários:', response.data);
-    } catch (error) {
-      console.error('Erro ao chamar API de usuários:', error);
-    }
-  };
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [usuarios, empresas, grupos, atendimentos] = await Promise.all([
+          api.get('/users/').then(res => res.data.length),
+          api.get('/empresas/').then(res => res.data.length),
+          api.get('/grupos/').then(res => res.data.length),
+          api.get('/atendimentos/count').then(res => res.data) // Endpoint novo
+        ]);
+        
+        setStats([
+          { title: 'Usuários', value: usuarios, icon: <UsersIcon fontSize="large" color="primary" /> },
+          { title: 'Empresas', value: empresas, icon: <CompaniesIcon fontSize="large" color="secondary" /> },
+          { title: 'Grupos', value: grupos, icon: <GroupsIcon fontSize="large" color="success" /> },
+          { title: 'Chats', value: atendimentos, icon: <MessagesIcon fontSize="large" color="info" /> },
+        ]);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+      }
+    };
+    
+    fetchStats();
+  }, []);
 
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
         Dashboard
       </Typography>
-      
-      {/* Botão de teste - remover após debug */}
-      <Button 
-        variant="outlined" 
-        onClick={testUsersAPI} 
-        sx={{ mb: 2 }}
-      >
-        Testar API de Usuários
-      </Button>
 
       <Grid container spacing={3}>
         {/* Cards de estatísticas */}
         {stats.map((stat, index) => (
-          <Grid key={index} xs={12} sm={6} md={3}>
+          <Grid key={index} item xs={12} sm={6} md={3}>
             <Paper
-              elevation={2}
+              elevation={3}
               sx={{
-                p: 2,
-                m: 1,
+                p: 3,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                height: 140,
+                height: 180,
                 justifyContent: 'center',
+                borderRadius: 2,
+                transition: 'transform 0.3s, box-shadow 0.3s',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: 6,
+                },
               }}
             >
               {stat.icon}
-              <Typography variant="h4" component="div" sx={{ mt: 1 }}>
+              <Typography variant="h3" component="div" sx={{ mt: 2, mb: 1 }}>
                 {stat.value}
               </Typography>
-              <Typography color="text.secondary" variant="body2">
+              <Typography color="text.secondary" variant="subtitle1">
                 {stat.title}
               </Typography>
             </Paper>
           </Grid>
         ))}
-
-        {/* Chats recentes */}
-        <Grid xs={12} md={6}>
-          <Card sx={{ m: 1 }}>
-            <CardHeader title="Conversas Recentes" />
-            <CardContent>
-              {recentChats.map((chat, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    py: 1.5,
-                    borderBottom: index < recentChats.length - 1 ? '1px solid #eee' : 'none',
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1">{chat.name}</Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 250 }}>
-                      {chat.message}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    {chat.time}
-                  </Typography>
-                </Box>
-              ))}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Resumo do sistema */}
-        <Grid xs={12} md={6}>
-          <Card>
-            <CardHeader title="Informações do Sistema" />
-            <CardContent>
-              <Typography variant="body1" paragraph>
-                Bem-vindo ao painel de administração do DX Atendimento. Aqui você pode gerenciar todos os aspectos
-                do sistema de atendimento via WhatsApp.
-              </Typography>
-              <Typography variant="body1">
-                Use o menu lateral para navegar entre as diferentes seções do sistema e gerenciar usuários,
-                empresas, grupos e atendimentos.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
     </Box>
   );

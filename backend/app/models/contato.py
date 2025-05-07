@@ -17,3 +17,4 @@ class Contato(Base):
     # Relacionamentos
     empresa = relationship("Empresa", back_populates="contatos")
     mensagens = relationship("Mensagem", back_populates="contato")
+    atendimentos = relationship("Atendimento", back_populates="contato")

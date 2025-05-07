@@ -10,6 +10,7 @@ class MensagemBase(BaseModel):
     contato_id: int
     atendente_id: Optional[int] = None
     entrada: bool = True
+    atendimento_id: int
 
 # Schemas para criação/atualização
 class MensagemCreate(MensagemBase):
