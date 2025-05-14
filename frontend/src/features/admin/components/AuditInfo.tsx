@@ -7,20 +7,7 @@ import {
   Box, 
   Divider 
 } from '@mui/material';
-
-interface UsuarioAuditoria {
-  id: number;
-  nome: string;
-}
-
-interface AuditInfoProps {
-  open: boolean;
-  onClose: () => void;
-  createdAt: string;
-  updatedAt?: string | null;
-  createdBy?: UsuarioAuditoria | null;
-  updatedBy?: UsuarioAuditoria | null;
-}
+import { AuditInfoProps } from '../types';
 
 const AuditInfo = ({ open, onClose, createdAt, updatedAt, createdBy, updatedBy }: AuditInfoProps) => {
   return (

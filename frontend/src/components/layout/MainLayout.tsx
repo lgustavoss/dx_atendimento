@@ -35,6 +35,7 @@ import {
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme as useAppTheme } from '../../providers/ThemeProvider';
 import { useAuth } from '../../providers/AuthProvider';
+import NotificationProvider from '../shared/NotificationProvider';
 
 const drawerWidth = 240;
 
@@ -201,6 +202,7 @@ const MainLayout = () => {
       >
         <Toolbar />
         <Outlet />
+        <NotificationProvider />
       </Box>
     </Box>
   );

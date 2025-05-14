@@ -12,57 +12,49 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
+  MenuItem
 } from '@mui/material';
-import { Contact, ContactCreate, ContactUpdate } from './types';
-import { createContact, updateContact } from './ContactService';
-import { getCompanies } from '../companies/CompanyService';
-import { Company } from '../companies/types';
+import { useAppDispatch, useAppSelector } from '../../../hooks/store';
+import { addContact, editContact } from '../../../store/slices/contactsSlice';
+import { fetchCompanies } from '../../../store/slices/companiesSlice';
+import { ContactCreate, ContactUpdate } from './types';
 
 interface ContactFormProps {
   open: boolean;
   onClose: () => void;
-  onSave: (contact: Contact) => void;
-  contact: Contact | null;
 }
 
-const ContactForm = ({ open, onClose, onSave, contact }: ContactFormProps) => {
+const ContactForm = ({ open, onClose }: ContactFormProps) => {
+  // Estados
   const [formData, setFormData] = useState<ContactCreate | ContactUpdate>({
     nome: '',
     telefone: '',
     empresa_id: null,
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [companiesLoading, setCompaniesLoading] = useState(false);
 
-  // Carregar as empresas para o dropdown
+  // Redux
+  const dispatch = useAppDispatch();
+  const selectedContact = useAppSelector((state) => state.contacts.selected);
+  const companies = useAppSelector((state) => state.companies.list);
+  const loading = useAppSelector((state) => 
+    state.ui.loading.addContact || state.ui.loading.editContact);
+  const companiesLoading = useAppSelector((state) => state.ui.loading.fetchCompanies);
+  const error = useAppSelector((state) => 
+    state.ui.alert.type === 'error' ? state.ui.alert.message : null);
+
+  // Efeitos
   useEffect(() => {
-    const fetchCompanies = async () => {
-      setCompaniesLoading(true);
-      try {
-        const data = await getCompanies();
-        setCompanies(data);
-      } catch (err) {
-        console.error('Erro ao carregar empresas:', err);
-      } finally {
-        setCompaniesLoading(false);
-      }
-    };
-
     if (open) {
-      fetchCompanies();
+      dispatch(fetchCompanies());
     }
-  }, [open]);
+  }, [dispatch, open]);
 
-  // Inicializar o formulário quando abrir ou quando mudar o contato sendo editado
   useEffect(() => {
-    if (contact) {
+    if (selectedContact) {
       setFormData({
-        nome: contact.nome,
-        telefone: contact.telefone,
-        empresa_id: contact.empresa_id,
+        nome: selectedContact.nome,
+        telefone: selectedContact.telefone,
+        empresa_id: selectedContact.empresa_id,
       });
     } else {
       setFormData({
@@ -71,19 +63,9 @@ const ContactForm = ({ open, onClose, onSave, contact }: ContactFormProps) => {
         empresa_id: null,
       });
     }
-  }, [contact, open]);
+  }, [selectedContact, open]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
-    const { name, value } = e.target;
-    if (name) {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
-  };
-
-  // Função para formatar telefone (XX) XXXXX-XXXX
+  // Formatação de telefone (XX) XXXXX-XXXX
   const formatPhone = (value: string) => {
     // Remove todos os caracteres não numéricos
     const numbers = value.replace(/\D/g, '');
@@ -98,7 +80,17 @@ const ContactForm = ({ open, onClose, onSave, contact }: ContactFormProps) => {
     }
   };
 
-  // Manipulador para o campo de telefone com formatação
+  // Handlers
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+    const { name, value } = e.target;
+    if (name) {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
+  };
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setFormData({
@@ -109,36 +101,21 @@ const ContactForm = ({ open, onClose, onSave, contact }: ContactFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      let savedContact;
-      
-      if (contact) {
-        savedContact = await updateContact(contact.id, formData);
-      } else {
-        savedContact = await createContact(formData as ContactCreate);
-      }
-      
-      onSave(savedContact);
-    } catch (err: any) {
-      console.error('Erro ao salvar contato:', err);
-      
-      // Tratamento específico para erro 401
-      if (err.response?.status === 401) {
-        setError('Sua sessão expirou. Por favor, faça login novamente.');
-      } else {
-        setError(err.response?.data?.detail || 'Erro ao salvar contato');
-      }
-    } finally {
-      setLoading(false);
+    
+    if (selectedContact) {
+      await dispatch(editContact({ id: selectedContact.id, data: formData }));
+    } else {
+      await dispatch(addContact(formData as ContactCreate));
+    }
+    
+    if (!error) {
+      onClose();
     }
   };
 
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{contact ? 'Editar Contato' : 'Novo Contato'}</DialogTitle>
+      <DialogTitle>{selectedContact ? 'Editar Contato' : 'Novo Contato'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

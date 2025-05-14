@@ -13,8 +13,10 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { User, UserCreate, UserUpdate } from './types';
-import { createUser, updateUser } from './UserService';
+import { useAppDispatch, useAppSelector } from '../../../hooks/store';
+import { addUser, editUser } from '../../../store/slices/usersSlice';
+import { User, UserCreate, UserUpdate } from '../types';
+import { createUser, updateUser } from '../services/UserService';
 
 interface UserFormProps {
   open: boolean;
@@ -31,17 +33,21 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
     is_active: true,
     is_superuser: false,
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const dispatch = useAppDispatch();
+  const loading = useAppSelector((state) => 
+    state.ui.loading.addUser || state.ui.loading.editUser);
+  const error = useAppSelector((state) => 
+    state.ui.alert.type === 'error' ? state.ui.alert.message : null);
 
   useEffect(() => {
     if (user) {
       setFormData({
         nome: user.nome,
         email: user.email,
+        password: '', // Senha vazia para edição
         is_active: user.is_active,
         is_superuser: user.is_superuser,
-        password: '', // Senha vazia para edição
       });
     } else {
       setFormData({
@@ -64,33 +70,24 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+    
     try {
       let savedUser;
       
       if (user && !formData.password) {
         const { password, ...dataWithoutPassword } = formData;
-        savedUser = await updateUser(user.id, dataWithoutPassword);
+        savedUser = await dispatch(editUser({ id: user.id, data: dataWithoutPassword })).unwrap();
       } else if (user) {
-        savedUser = await updateUser(user.id, formData);
+        savedUser = await dispatch(editUser({ id: user.id, data: formData })).unwrap();
       } else {
-        savedUser = await createUser(formData as UserCreate);
+        savedUser = await dispatch(addUser(formData as UserCreate)).unwrap();
       }
       
-      onSave(savedUser);
-    } catch (err: any) {
-      console.error('Erro ao salvar usuário:', err);
-      
-      // Tratamento específico para erro 401
-      if (err.response?.status === 401) {
-        setError('Sua sessão expirou. Por favor, faça login novamente.');
-      } else {
-        setError(err.response?.data?.detail || 'Erro ao salvar usuário');
+      if (!error) {
+        onSave(savedUser);
       }
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      // Os erros já são tratados no thunk, não precisamos fazer nada aqui
     }
   };
 
@@ -130,7 +127,7 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
             <Grid item xs={12}>
               <TextField
                 name="password"
-                label={user ? "Senha (deixe em branco para manter)" : "Senha"}
+                label={user ? "Nova Senha (deixe em branco para manter)" : "Senha"}
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
@@ -140,27 +137,29 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
               />
             </Grid>
             
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <FormControlLabel
                 control={
                   <Checkbox
-                    name="is_active"
                     checked={formData.is_active}
                     onChange={handleChange}
+                    name="is_active"
+                    color="primary"
                     disabled={loading}
                   />
                 }
-                label="Ativo"
+                label="Usuário Ativo"
               />
             </Grid>
             
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <FormControlLabel
                 control={
                   <Checkbox
-                    name="is_superuser"
                     checked={formData.is_superuser}
                     onChange={handleChange}
+                    name="is_superuser"
+                    color="primary"
                     disabled={loading}
                   />
                 }

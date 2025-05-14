@@ -1,50 +1,77 @@
 import axios from 'axios';
-
-// Usar caminho relativo ao utilizar proxy
-const API_URL = '/api/v1';
+import { addNotification } from '../store/slices/notificationSlice';
+import { store } from '../store';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para adicionar o token a todas as requisições
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      // Garantir que o token seja aplicado a TODAS as requisições
       config.headers.Authorization = `Bearer ${token}`;
-      // Configuração global do cabeçalho para manter entre navegações
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Remover para produção - usar apenas para debug
-      console.log(`Requisição autenticada para: ${config.url}`);
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Interceptor para tratamento de erros
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Verifica se é um erro 401 e se não estamos em uma operação em andamento
-    if (error.response && error.response.status === 401) {
-      // Verificar se esta requisição é uma operação de login
-      const isLoginRequest = error.config?.url?.includes('/auth/login');
-      
-      // Apenas redireciona se não for uma tentativa de login
-      if (!isLoginRequest && !window.location.pathname.includes('/login')) {
-        console.log('Token inválido/expirado, redirecionando para login');
-        localStorage.removeItem('token');
-        window.location.href = '/login';
+  async (error) => {
+    if (error.response) {
+      const { status, data, config } = error.response;
+
+      // Não mostrar erro 404 para listagens
+      if (status === 404 && config.method === 'get') {
+        const isListEndpoint = [
+          '/empresas/',
+          '/grupos/',
+          '/empresas',
+          '/grupos',  // Adicionando endpoints sem barra
+        ].includes(config.url);
+
+        if (isListEndpoint) {
+          return Promise.resolve({ data: [] });
+        }
       }
+
+      // Não mostrar erro de autenticação para requisições normais
+      if (status === 401 && !config.url.includes('/login')) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
+      // Outros erros mostram notificação
+      let message = 'Ocorreu um erro inesperado';
+      switch (status) {
+        case 403:
+          message = 'Acesso negado: você não tem permissão para realizar esta ação.';
+          break;
+        case 404:
+          message = 'O recurso solicitado não foi encontrado.';
+          break;
+        case 500:
+          message = 'Erro interno do servidor. Tente novamente mais tarde.';
+          break;
+        default:
+          message = data?.message || message;
+      }
+
+      store.dispatch(
+        addNotification({
+          message,
+          type: 'error',
+        })
+      );
     }
     return Promise.reject(error);
   }

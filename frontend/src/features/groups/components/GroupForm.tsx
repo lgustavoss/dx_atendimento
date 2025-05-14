@@ -10,29 +10,36 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { Group, GroupCreate, GroupUpdate } from './types';
-import { createGrupo, updateGrupo } from './GroupService';
+import { useAppDispatch, useAppSelector } from '../../../hooks/store';
+import { addGroup, editGroup } from '../../../store/slices/groupsSlice';
+import { GroupCreate, GroupUpdate } from './types';
 
 interface GroupFormProps {
   open: boolean;
   onClose: () => void;
-  onSave: (group: Group) => void;
-  group: Group | null;
 }
 
-const GroupForm = ({ open, onClose, onSave, group }: GroupFormProps) => {
+const GroupForm = ({ open, onClose }: GroupFormProps) => {
+  // Estados
   const [formData, setFormData] = useState<GroupCreate | GroupUpdate>({
     nome: '',
     descricao: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // Redux
+  const dispatch = useAppDispatch();
+  const selectedGroup = useAppSelector((state) => state.groups.selected);
+  const loading = useAppSelector((state) => 
+    state.ui.loading.addGroup || state.ui.loading.editGroup);
+  const error = useAppSelector((state) => 
+    state.ui.alert.type === 'error' ? state.ui.alert.message : null);
+
+  // Efeitos
   useEffect(() => {
-    if (group) {
+    if (selectedGroup) {
       setFormData({
-        nome: group.nome,
-        descricao: group.descricao || '',
+        nome: selectedGroup.nome,
+        descricao: selectedGroup.descricao || '',
       });
     } else {
       setFormData({
@@ -40,8 +47,9 @@ const GroupForm = ({ open, onClose, onSave, group }: GroupFormProps) => {
         descricao: '',
       });
     }
-  }, [group, open]);
+  }, [selectedGroup, open]);
 
+  // Handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
@@ -52,36 +60,21 @@ const GroupForm = ({ open, onClose, onSave, group }: GroupFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      let savedGroup;
-      
-      if (group) {
-        savedGroup = await updateGrupo(group.id, formData);
-      } else {
-        savedGroup = await createGrupo(formData as GroupCreate);
-      }
-      
-      onSave(savedGroup);
-    } catch (err: any) {
-      console.error('Erro ao salvar grupo:', err);
-      
-      // Tratamento específico para erro 401
-      if (err.response?.status === 401) {
-        setError('Sua sessão expirou. Por favor, faça login novamente.');
-      } else {
-        setError(err.response?.data?.detail || 'Erro ao salvar grupo');
-      }
-    } finally {
-      setLoading(false);
+    
+    if (selectedGroup) {
+      await dispatch(editGroup({ id: selectedGroup.id, data: formData }));
+    } else {
+      await dispatch(addGroup(formData as GroupCreate));
+    }
+    
+    if (!error) {
+      onClose();
     }
   };
 
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{group ? 'Editar Grupo' : 'Novo Grupo'}</DialogTitle>
+      <DialogTitle>{selectedGroup ? 'Editar Grupo' : 'Novo Grupo'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -107,7 +100,7 @@ const GroupForm = ({ open, onClose, onSave, group }: GroupFormProps) => {
                 onChange={handleChange}
                 fullWidth
                 multiline
-                rows={3}
+                rows={4}
                 disabled={loading}
               />
             </Grid>

@@ -14,13 +14,17 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../providers/AuthProvider';
+import { useAppSelector } from '../../../hooks/store';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  
+  // Usar o loading do estado global ao invés de um estado local
+  const loading = useAppSelector(state => state.ui.loading.login);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -35,7 +39,6 @@ const Login = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setLoading(true);
 
     try {
       const success = await login(email, password);
@@ -50,8 +53,6 @@ const Login = () => {
     } catch (err) {
       setError('Ocorreu um erro durante o login. Tente novamente.');
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 

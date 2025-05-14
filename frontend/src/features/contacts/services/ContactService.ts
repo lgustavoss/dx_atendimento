@@ -1,5 +1,5 @@
-import api from '../../services/api';
-import { Contact, ContactCreate, ContactUpdate } from './types';
+import api from '../../../services/api';
+import { Contact, ContactCreate, ContactUpdate } from '../types';
 
 export const getContacts = async (): Promise<Contact[]> => {
   const response = await api.get('/contatos/');

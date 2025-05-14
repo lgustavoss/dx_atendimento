@@ -12,62 +12,49 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
+  MenuItem
 } from '@mui/material';
-import { Company, CompanyCreate, CompanyUpdate } from './types';
-import { createCompany, updateCompany } from './CompanyService';
-import { getGrupos } from '../groups/GroupService';
-
-// Definindo a interface para os grupos (simplificada)
-interface Grupo {
-  id: number;
-  nome: string;
-}
+import { useAppDispatch, useAppSelector } from '../../../hooks/store';
+import { addCompany, editCompany } from '../../../store/slices/companiesSlice';
+import { fetchGroups } from '../../../store/slices/groupsSlice';
+import { CompanyCreate, CompanyUpdate } from './types';
 
 interface CompanyFormProps {
   open: boolean;
   onClose: () => void;
-  onSave: (company: Company) => void;
-  company: Company | null;
 }
 
-const CompanyForm = ({ open, onClose, onSave, company }: CompanyFormProps) => {
+const CompanyForm = ({ open, onClose }: CompanyFormProps) => {
+  // Estados
   const [formData, setFormData] = useState<CompanyCreate | CompanyUpdate>({
     nome: '',
     cnpj: '',
     grupo_id: undefined,
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [gruposLoading, setGruposLoading] = useState(false);
 
-  // Carregar os grupos para o dropdown
+  // Redux
+  const dispatch = useAppDispatch();
+  const selectedCompany = useAppSelector((state) => state.companies.selected);
+  const groups = useAppSelector((state) => state.groups.list);
+  const loading = useAppSelector((state) => 
+    state.ui.loading.addCompany || state.ui.loading.editCompany);
+  const gruposLoading = useAppSelector((state) => state.ui.loading.fetchGroups);
+  const error = useAppSelector((state) => 
+    state.ui.alert.type === 'error' ? state.ui.alert.message : null);
+
+  // Efeitos
   useEffect(() => {
-    const fetchGrupos = async () => {
-      setGruposLoading(true);
-      try {
-        const data = await getGrupos();
-        setGrupos(data);
-      } catch (err) {
-        console.error('Erro ao carregar grupos:', err);
-      } finally {
-        setGruposLoading(false);
-      }
-    };
-
     if (open) {
-      fetchGrupos();
+      dispatch(fetchGroups());
     }
-  }, [open]);
+  }, [dispatch, open]);
 
-  // Inicializar o formulário quando abrir ou quando mudar a empresa sendo editada
   useEffect(() => {
-    if (company) {
+    if (selectedCompany) {
       setFormData({
-        nome: company.nome,
-        cnpj: company.cnpj,
-        grupo_id: company.grupo_id,
+        nome: selectedCompany.nome,
+        cnpj: selectedCompany.cnpj,
+        grupo_id: selectedCompany.grupo_id,
       });
     } else {
       setFormData({
@@ -76,8 +63,26 @@ const CompanyForm = ({ open, onClose, onSave, company }: CompanyFormProps) => {
         grupo_id: undefined,
       });
     }
-  }, [company, open]);
+  }, [selectedCompany, open]);
 
+  // Formatação de CNPJ: 00.000.000/0000-00
+  const formatCNPJ = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    
+    if (numbers.length <= 2) {
+      return numbers;
+    } else if (numbers.length <= 5) {
+      return `${numbers.substring(0, 2)}.${numbers.substring(2)}`;
+    } else if (numbers.length <= 8) {
+      return `${numbers.substring(0, 2)}.${numbers.substring(2, 5)}.${numbers.substring(5)}`;
+    } else if (numbers.length <= 12) {
+      return `${numbers.substring(0, 2)}.${numbers.substring(2, 5)}.${numbers.substring(5, 8)}/${numbers.substring(8)}`;
+    } else {
+      return `${numbers.substring(0, 2)}.${numbers.substring(2, 5)}.${numbers.substring(5, 8)}/${numbers.substring(8, 12)}-${numbers.substring(12, 14)}`;
+    }
+  };
+
+  // Handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
     const { name, value } = e.target;
     if (name) {
@@ -88,50 +93,6 @@ const CompanyForm = ({ open, onClose, onSave, company }: CompanyFormProps) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      let savedCompany;
-      
-      if (company) {
-        savedCompany = await updateCompany(company.id, formData);
-      } else {
-        savedCompany = await createCompany(formData as CompanyCreate);
-      }
-      
-      onSave(savedCompany);
-    } catch (err: any) {
-      console.error('Erro ao salvar empresa:', err);
-      
-      // Tratamento específico para erro 401
-      if (err.response?.status === 401) {
-        setError('Sua sessão expirou. Por favor, faça login novamente.');
-      } else {
-        setError(err.response?.data?.detail || 'Erro ao salvar empresa');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Função para formatar CNPJ (XX.XXX.XXX/XXXX-XX)
-  const formatCNPJ = (value: string) => {
-    // Remove todos os caracteres não numéricos
-    const cnpj = value.replace(/\D/g, '');
-    
-    // Aplica a máscara do CNPJ
-    return cnpj
-      .replace(/^(\d{2})(\d)/, '$1.$2')
-      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-      .replace(/\.(\d{3})(\d)/, '.$1/$2')
-      .replace(/(\d{4})(\d)/, '$1-$2')
-      .substr(0, 18);
-  };
-
-  // Manipulador para o campo de CNPJ com formatação
   const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setFormData({
@@ -140,9 +101,23 @@ const CompanyForm = ({ open, onClose, onSave, company }: CompanyFormProps) => {
     });
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (selectedCompany) {
+      await dispatch(editCompany({ id: selectedCompany.id, data: formData }));
+    } else {
+      await dispatch(addCompany(formData as CompanyCreate));
+    }
+    
+    if (!error) {
+      onClose();
+    }
+  };
+
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{company ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
+      <DialogTitle>{selectedCompany ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -170,7 +145,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: CompanyFormProps) => {
                 required
                 disabled={loading}
                 inputProps={{ maxLength: 18 }}
-                placeholder="XX.XXX.XXX/XXXX-XX"
+                placeholder="00.000.000/0000-00"
               />
             </Grid>
             
@@ -187,7 +162,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: CompanyFormProps) => {
                   <MenuItem value="">
                     <em>Nenhum</em>
                   </MenuItem>
-                  {grupos.map((grupo) => (
+                  {groups.map((grupo) => (
                     <MenuItem key={grupo.id} value={grupo.id}>
                       {grupo.nome}
                     </MenuItem>

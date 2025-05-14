@@ -1,44 +1,40 @@
-import { Grid, Paper, Typography, Box } from '@mui/material';
 import {
   PeopleAlt as UsersIcon,
   Business as CompaniesIcon,
   Category as GroupsIcon,
   Message as MessagesIcon,
 } from '@mui/icons-material';
-import api from '../../services/api';
 import { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../hooks/store';
+import { fetchDashboardStats } from '../../store/slices/dashboardSlice';
+import { Box, Grid, Paper, Typography } from '@mui/material';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState([
+  const dispatch = useAppDispatch();
+  const stats = useAppSelector((state) => state.dashboard?.stats);
+  const isLoading = useAppSelector((state) => state.ui.loading.fetchDashboardStats);
+  
+  const [statCards, setStatCards] = useState([
     { title: 'Usuários', value: 0, icon: <UsersIcon fontSize="large" color="primary" /> },
     { title: 'Empresas', value: 0, icon: <CompaniesIcon fontSize="large" color="secondary" /> },
     { title: 'Grupos', value: 0, icon: <GroupsIcon fontSize="large" color="success" /> },
-    { title: 'Chats', value: 0, icon: <MessagesIcon fontSize="large" color="info" /> }, // Alterado de "Mensagens" para "Chats"
+    { title: 'Chats', value: 0, icon: <MessagesIcon fontSize="large" color="info" /> },
   ]);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [usuarios, empresas, grupos, atendimentos] = await Promise.all([
-          api.get('/users/').then(res => res.data.length),
-          api.get('/empresas/').then(res => res.data.length),
-          api.get('/grupos/').then(res => res.data.length),
-          api.get('/atendimentos/count').then(res => res.data) // Endpoint novo
-        ]);
-        
-        setStats([
-          { title: 'Usuários', value: usuarios, icon: <UsersIcon fontSize="large" color="primary" /> },
-          { title: 'Empresas', value: empresas, icon: <CompaniesIcon fontSize="large" color="secondary" /> },
-          { title: 'Grupos', value: grupos, icon: <GroupsIcon fontSize="large" color="success" /> },
-          { title: 'Chats', value: atendimentos, icon: <MessagesIcon fontSize="large" color="info" /> },
-        ]);
-      } catch (error) {
-        console.error('Erro ao carregar estatísticas:', error);
-      }
-    };
-    
-    fetchStats();
-  }, []);
+    dispatch(fetchDashboardStats());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (stats) {
+      setStatCards([
+        { title: 'Usuários', value: stats.usuarios || 0, icon: <UsersIcon fontSize="large" color="primary" /> },
+        { title: 'Empresas', value: stats.empresas || 0, icon: <CompaniesIcon fontSize="large" color="secondary" /> },
+        { title: 'Grupos', value: stats.grupos || 0, icon: <GroupsIcon fontSize="large" color="success" /> },
+        { title: 'Chats', value: stats.chats || 0, icon: <MessagesIcon fontSize="large" color="info" /> },
+      ]);
+    }
+  }, [stats]);
 
   return (
     <Box>
@@ -47,8 +43,7 @@ const Dashboard = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* Cards de estatísticas */}
-        {stats.map((stat, index) => (
+        {statCards.map((stat, index) => (
           <Grid key={index} item xs={12} sm={6} md={3}>
             <Paper
               elevation={3}
@@ -68,10 +63,10 @@ const Dashboard = () => {
               }}
             >
               {stat.icon}
-              <Typography variant="h3" component="div" sx={{ mt: 2, mb: 1 }}>
-                {stat.value}
+              <Typography variant="h4" component="div" sx={{ mt: 2 }}>
+                {isLoading ? '...' : stat.value}
               </Typography>
-              <Typography color="text.secondary" variant="subtitle1">
+              <Typography variant="subtitle1" color="text.secondary">
                 {stat.title}
               </Typography>
             </Paper>

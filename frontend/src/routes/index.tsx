@@ -3,17 +3,17 @@ import { Suspense, lazy } from 'react';
 import MainLayout from '../components/layout/MainLayout';
 import { CircularProgress, Box } from '@mui/material';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
-import AdminRoute from '../components/admin/AdminRoute';
+import AdminRoute from '../features/admin/components/AdminRoute';
 import Unauthorized from '../components/shared/Unauthorized';
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
 const Login = lazy(() => import('../features/auth/components/Login'));
 const Chat = lazy(() => import('../features/chat/components/Chat'));
-const Users = lazy(() => import('../features/users/Users'));
-const Companies = lazy(() => import('../features/companies/Companies'));
-const Groups = lazy(() => import('../features/groups/Groups'));
-const Contacts = lazy(() => import('../features/contacts/Contacts'));
+const Users = lazy(() => import('../features/users/components/Users'));
+const Companies = lazy(() => import('../features/companies/components/Companies'));
+const Groups = lazy(() => import('../features/groups/components/Groups'));
+const Contacts = lazy(() => import('../features/contacts/components/Contacts'));
 const NotFound = lazy(() => import('../components/shared/NotFound'));
 
 // Loading component

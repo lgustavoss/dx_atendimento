@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Box, Snackbar, Alert, IconButton, Tooltip } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
-import DataTable from '../../components/admin/DataTable';
-import DeleteDialog from '../../components/admin/DeleteDialog';
+import DataTable from '../../../features/admin/components/DataTable';
+import DeleteDialog from '../../../features/admin/components/DeleteDialog';
 import ContactForm from './ContactForm';
-import { getContacts, deleteContact } from './ContactService';
-import { Contact } from './types';
-import AuditInfo from '../../components/admin/AuditInfo';
+import { Contact } from '../types';
+import AuditInfo from '../../../features/admin/components/AuditInfo';
+import { useAppDispatch, useAppSelector } from '../../../hooks/store';
+import { 
+  fetchContacts, 
+  removeContact, 
+  setSelectedContact 
+} from '../../../store/slices/contactsSlice';
+import { clearAlert } from '../../../store/slices/uiSlice';
 
 const columns = [
   { id: 'id', label: 'ID', minWidth: 50 },
@@ -21,46 +27,35 @@ const columns = [
 ];
 
 const Contacts = () => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // Estados locais para diálogos
   const [openForm, setOpenForm] = useState(false);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<number | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  
-  // Estados para o diálogo de informações de auditoria
   const [auditInfoOpen, setAuditInfoOpen] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  
+  // Redux state e dispatch
+  const dispatch = useAppDispatch();
+  const contacts = useAppSelector((state) => state.contacts.list);
+  const selectedContact = useAppSelector((state) => state.contacts.selected);
+  const { message: alertMessage, type: alertType } = useAppSelector((state) => state.ui.alert);
+  const loading = useAppSelector((state) => state.ui.loading.fetchContacts);
+  const deleteLoading = useAppSelector((state) => state.ui.loading.removeContact);
 
-  const fetchContacts = async () => {
-    try {
-      setLoading(true);
-      const data = await getContacts();
-      setContacts(data);
-    } catch (err) {
-      setError('Não foi possível carregar os contatos');
-      console.error('Erro ao carregar contatos:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Carregar contatos ao montar o componente
   useEffect(() => {
-    fetchContacts();
-  }, []);
+    dispatch(fetchContacts());
+  }, [dispatch]);
 
+  // Handlers
   const handleAddContact = () => {
-    setEditingContact(null);
+    dispatch(setSelectedContact(null));
     setOpenForm(true);
   };
 
   const handleEditContact = (id: number) => {
     const contact = contacts.find((c) => c.id === id);
     if (contact) {
-      setEditingContact(contact);
+      dispatch(setSelectedContact(contact));
       setOpenForm(true);
     }
   };
@@ -72,48 +67,30 @@ const Contacts = () => {
 
   const confirmDeleteContact = async () => {
     if (contactToDelete !== null) {
-      try {
-        setDeleteLoading(true);
-        await deleteContact(contactToDelete);
-        setContacts(contacts.filter((contact) => contact.id !== contactToDelete));
-        setSuccess('Contato excluído com sucesso');
-      } catch (err) {
-        setError('Erro ao excluir contato');
-        console.error(err);
-      } finally {
-        setDeleteLoading(false);
-        setDeleteDialogOpen(false);
-        setContactToDelete(null);
-      }
+      await dispatch(removeContact(contactToDelete));
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
     }
-  };
-
-  const handleContactSaved = (contact: Contact) => {
-    if (editingContact) {
-      setContacts(contacts.map((c) => (c.id === contact.id ? contact : c)));
-      setSuccess('Contato atualizado com sucesso');
-    } else {
-      setContacts([...contacts, contact]);
-      setSuccess('Contato criado com sucesso');
-    }
-    setOpenForm(false);
   };
 
   const handleCloseAlert = () => {
-    setError(null);
-    setSuccess(null);
+    dispatch(clearAlert());
   };
 
-  // Função para mostrar informações de auditoria
+  const handleContactFormClose = () => {
+    setOpenForm(false);
+    dispatch(setSelectedContact(null));
+  };
+
+  // Auditoria
   const handleShowAuditInfo = (id: number) => {
     const contact = contacts.find((c) => c.id === id);
     if (contact) {
-      setSelectedContact(contact);
+      dispatch(setSelectedContact(contact));
       setAuditInfoOpen(true);
     }
   };
 
-  // Função que renderiza os botões de ação personalizados
   const renderActionButtons = (id: number) => (
     <>
       <Tooltip title="Informações de Auditoria">
@@ -139,9 +116,7 @@ const Contacts = () => {
 
       <ContactForm
         open={openForm}
-        onClose={() => setOpenForm(false)}
-        onSave={handleContactSaved}
-        contact={editingContact}
+        onClose={handleContactFormClose}
       />
 
       <DeleteDialog
@@ -164,15 +139,9 @@ const Contacts = () => {
         />
       )}
 
-      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseAlert}>
-        <Alert onClose={handleCloseAlert} severity="error">
-          {error}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar open={!!success} autoHideDuration={6000} onClose={handleCloseAlert}>
-        <Alert onClose={handleCloseAlert} severity="success">
-          {success}
+      <Snackbar open={!!alertMessage} autoHideDuration={6000} onClose={handleCloseAlert}>
+        <Alert onClose={handleCloseAlert} severity={alertType || 'info'}>
+          {alertMessage}
         </Alert>
       </Snackbar>
     </Box>

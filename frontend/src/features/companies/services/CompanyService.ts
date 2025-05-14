@@ -1,5 +1,5 @@
-import api from '../../services/api';
-import { Company, CompanyCreate, CompanyUpdate } from './types';
+import api from '../../../services/api';
+import { Company, CompanyCreate, CompanyUpdate } from '../types';
 
 export const getCompanies = async (): Promise<Company[]> => {
   const response = await api.get('/empresas/');
