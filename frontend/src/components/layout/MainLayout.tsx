@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
+import OnlineStatusManager from '../../features/users/components/OnlineStatusManager';
 import {
   Box,
   AppBar,
@@ -31,11 +32,16 @@ import {
   Logout as LogoutIcon,
   Person as PersonIcon,
   Brightness4 as ThemeIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme as useAppTheme } from '../../providers/ThemeProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import NotificationProvider from '../shared/NotificationProvider';
+import TokenRefresher from '../shared/TokenRefresher';
+import ChangePasswordDialog from '../auth/ChangePasswordDialog';
+import OnlineStatus from '../../features/users/components/OnlineStatus';
+import { useUserStatusWebSocket } from '../../hooks/useUserStatusWebSocket';
 
 const drawerWidth = 240;
 
@@ -44,13 +50,24 @@ const MainLayout = () => {
   const { toggleTheme } = useAppTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, token } = useAuth();
+
+  // Use a variável de ambiente correta para a URL do WebSocket
+  useUserStatusWebSocket(
+    token ? import.meta.env.VITE_WEBSOCKET_URL : ''
+  );
 
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+    if (isMobile) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setIsDrawerOpen(!isDrawerOpen);
+    }
   };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -67,24 +84,56 @@ const MainLayout = () => {
     navigate('/login');
   };
 
+  // Itens do menu baseados nas permissões do usuário
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
-    { text: 'Usuários', icon: <PeopleIcon />, path: '/users' },
-    { text: 'Empresas', icon: <BusinessIcon />, path: '/companies' },
-    { text: 'Grupos', icon: <CategoryIcon />, path: '/groups' },
+    // Itens que requerem permissão de admin
+    ...(user?.is_superuser ? [
+      { text: 'Usuários', icon: <PeopleIcon />, path: '/users' },
+      { text: 'Empresas', icon: <BusinessIcon />, path: '/companies' },
+      { text: 'Grupos', icon: <CategoryIcon />, path: '/groups' },
+    ] : []),
+    // Itens disponíveis para todos
     { text: 'Contatos', icon: <ContactsIcon />, path: '/contacts' },
     { text: 'Configurações', icon: <SettingsIcon />, path: '/settings' },
   ];
 
+  // Debug apenas em desenvolvimento
+  useEffect(() => {
+    if (import.meta.env.MODE === 'development') {
+      console.log('User permissions:', {
+        user: user?.nome,
+        email: user?.email,
+        is_superuser: user?.is_superuser,
+      });
+    }
+  }, [user]);
+
   const drawer = (
-    <Box>
-      <Toolbar sx={{ justifyContent: 'center' }}>
-        <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-          DX Atendimento
-        </Typography>
-      </Toolbar>
-      <Divider />
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <AppBar 
+        position="static" 
+        sx={{ 
+          position: 'relative',
+          boxShadow: 'none',
+          borderBottom: 'none',
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between' }}> {/* Alterado para space-between */}
+          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+            DX Atendimento
+          </Typography>
+          {isMobile && ( // Botão de fechar apenas no mobile
+            <IconButton
+              onClick={handleDrawerToggle}
+              sx={{ color: 'inherit' }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+        </Toolbar>
+      </AppBar>
       <List>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
@@ -94,7 +143,9 @@ const MainLayout = () => {
               selected={location.pathname === item.path}
               onClick={isMobile ? handleDrawerToggle : undefined}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemIcon>
+                {item.icon}
+              </ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
           </ListItem>
@@ -104,30 +155,41 @@ const MainLayout = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box 
+      sx={{ 
+        display: 'flex',
+        minHeight: '100vh',
+        width: '100%',
+        overflow: 'hidden'
+      }}
+    >
+      <OnlineStatusManager />
+      <TokenRefresher />
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: { xs: '100%', md: `calc(100% - ${isDrawerOpen ? drawerWidth : 0}px)` },
+          ml: { xs: 0, md: isDrawerOpen ? `${drawerWidth}px` : 0 },
+          zIndex: (theme) => theme.zIndex.drawer + 1
         }}
       >
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="toggle drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 2 }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'DX Atendimento'}
-          </Typography>
+          
+          <Box sx={{ flexGrow: 1 }} />
+          
           <IconButton color="inherit" onClick={toggleTheme}>
             <ThemeIcon />
           </IconButton>
+          
           <IconButton
             onClick={handleProfileMenuOpen}
             size="small"
@@ -153,11 +215,22 @@ const MainLayout = () => {
               horizontal: 'right',
             }}
           >
+            <MenuItem>
+              <ListItemIcon>
+                <OnlineStatus isOnline={!!user?.is_online} showText={true} size="medium" />
+              </ListItemIcon>
+            </MenuItem>
             <MenuItem onClick={handleProfileMenuClose}>
               <ListItemIcon>
                 <PersonIcon fontSize="small" />
               </ListItemIcon>
               Perfil
+            </MenuItem>
+            <MenuItem onClick={() => setChangePasswordOpen(true)}>
+              <ListItemIcon>
+                <LockIcon fontSize="small" />
+              </ListItemIcon>
+              Alterar Senha
             </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
@@ -170,21 +243,42 @@ const MainLayout = () => {
       </AppBar>
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ 
+          width: { xs: 0, md: isDrawerOpen ? drawerWidth : 0 },
+          flexShrink: 0
+        }}
         aria-label="menu items"
       >
         <Drawer
-          variant={isMobile ? 'temporary' : 'permanent'}
-          open={isMobile ? mobileOpen : true}
+          variant={isMobile ? 'temporary' : 'persistent'}
+          open={isMobile ? mobileOpen : isDrawerOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
             keepMounted: true, // Melhor desempenho em dispositivos móveis
           }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
+          PaperProps={{
+            sx: {
+              width: { xs: '100%', md: drawerWidth }, // Drawer ocupa toda a tela em mobile
+              borderRight: 'none',
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              display: 'flex', // Adicionado display flex
+              flexDirection: 'column', // Organiza os itens verticalmente
+              '& .MuiListItemIcon-root': {
+                color: 'inherit',
+              },
+              '& .MuiListItemButton-root': {
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                },
+                '&.Mui-selected': {
+                  bgcolor: 'primary.dark',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  }
+                }
+              },
+            }
           }}
         >
           {drawer}
@@ -194,16 +288,43 @@ const MainLayout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          display: 'flex',
+          flexDirection: 'column',
           minHeight: '100vh',
+          width: '100%',
           bgcolor: 'background.default',
+          color: 'background.default',
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
-        <Toolbar />
-        <Outlet />
+        <Toolbar /> {/* Espaçamento para o AppBar fixo */}
+        <Box 
+          sx={{ 
+            flexGrow: 1,
+            p: { xs: 1, sm: 2 },
+            overflow: 'auto',
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center', // Centraliza horizontalmente
+          }}
+        >
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: '1800px', // Largura máxima para o conteúdo
+              height: '100%',
+            }}
+          >
+            <Outlet />
+          </Box>
+        </Box>
         <NotificationProvider />
       </Box>
+      <ChangePasswordDialog 
+        open={changePasswordOpen} 
+        onClose={() => setChangePasswordOpen(false)} 
+      />
     </Box>
   );
 };

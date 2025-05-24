@@ -1,4 +1,3 @@
-// src/features/users/UserForm.tsx
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -30,6 +29,7 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
     nome: '',
     email: '',
     password: '',
+    password_confirm: '',
     is_active: true,
     is_superuser: false,
   });
@@ -46,6 +46,7 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
         nome: user.nome,
         email: user.email,
         password: '', // Senha vazia para edição
+        password_confirm: '', // Senha de confirmação vazia para edição
         is_active: user.is_active,
         is_superuser: user.is_superuser,
       });
@@ -54,6 +55,7 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
         nome: '',
         email: '',
         password: '',
+        password_confirm: '',
         is_active: true,
         is_superuser: false,
       });
@@ -71,23 +73,29 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (formData.password !== formData.password_confirm) {
+      dispatch(setAlert({
+        message: 'As senhas não conferem',
+        type: 'error'
+      }));
+      return;
+    }
+
     try {
-      let savedUser;
-      
-      if (user && !formData.password) {
-        const { password, ...dataWithoutPassword } = formData;
-        savedUser = await dispatch(editUser({ id: user.id, data: dataWithoutPassword })).unwrap();
-      } else if (user) {
-        savedUser = await dispatch(editUser({ id: user.id, data: formData })).unwrap();
+      if (user) {
+        if (!formData.password) {
+          const { password, password_confirm, ...dataWithoutPassword } = formData;
+          await dispatch(editUser({ id: user.id, data: dataWithoutPassword })).unwrap();
+        } else {
+          await dispatch(editUser({ id: user.id, data: formData })).unwrap();
+        }
       } else {
-        savedUser = await dispatch(addUser(formData as UserCreate)).unwrap();
+        const { password_confirm, ...dataToSend } = formData;
+        await dispatch(addUser(dataToSend as UserCreate)).unwrap();
       }
-      
-      if (!error) {
-        onSave(savedUser);
-      }
+      onClose(); // Fecha o formulário após sucesso
     } catch (err) {
-      // Os erros já são tratados no thunk, não precisamos fazer nada aqui
+      console.error('Erro ao salvar usuário:', err);
     }
   };
 
@@ -130,6 +138,19 @@ const UserForm = ({ open, onClose, onSave, user }: UserFormProps) => {
                 label={user ? "Nova Senha (deixe em branco para manter)" : "Senha"}
                 type="password"
                 value={formData.password}
+                onChange={handleChange}
+                fullWidth
+                required={!user}
+                disabled={loading}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                name="password_confirm"
+                label="Confirmação de Senha"
+                type="password"
+                value={formData.password_confirm}
                 onChange={handleChange}
                 fullWidth
                 required={!user}

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Box, Snackbar, Alert, IconButton, Tooltip } from '@mui/material';
+import { Snackbar, Alert, IconButton, Tooltip } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import DataTable from '../../../features/admin/components/DataTable';
 import DeleteDialog from '../../../features/admin/components/DeleteDialog';
 import CompanyForm from './CompanyForm';
-import { getCompanies, deleteCompany } from '../services/CompanyService';
 import { Company } from '../types';
 import AuditInfo from '../../../features/admin/components/AuditInfo';
-
+import PageContainer from '../../../components/layout/PageContainer';
 import { useAppDispatch, useAppSelector } from '../../../hooks/store';
 import { 
   fetchCompanies, 
@@ -98,16 +97,16 @@ const Companies = () => {
   );
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <PageContainer title="Empresas">
       <DataTable
         columns={columns}
         data={companies}
-        title="Empresas"
         onAdd={handleAddCompany}
         onEdit={handleEditCompany}
         onDelete={handleDeleteCompany}
         searchField="nome"
         renderCustomActions={renderActionButtons}
+        loading={loading}
       />
 
       <CompanyForm
@@ -140,7 +139,7 @@ const Companies = () => {
           {alertMessage}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 };
 

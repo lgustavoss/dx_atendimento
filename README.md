@@ -17,11 +17,12 @@ DX Atendimento é uma aplicação web para gerenciamento de atendimentos e conve
 ## Tecnologias Utilizadas
 
 ### Backend
-- FastAPI: Framework Python para APIs com alta performance
-- SQLAlchemy: ORM para interação com banco de dados
-- Alembic: Sistema de migração de banco de dados
+- Django 4.2+: Framework web Python de alto nível
+- Django REST Framework: Toolkit para construção de Web APIs
+- Django Channels: Suporte a WebSockets para comunicação em tempo real
 - JWT: Autenticação via tokens
-- MySQL: Banco de dados relacional
+- SQLite/PostgreSQL: Banco de dados relacional
+- Redis: Para gerenciamento de canais WebSocket
 
 ### Frontend
 - React 19: Biblioteca JavaScript para construção de interfaces
@@ -36,6 +37,7 @@ DX Atendimento é uma aplicação web para gerenciamento de atendimentos e conve
 - Python 3.12+
 - Node.js 18+
 - MySQL 8+
+- Redis (para WebSockets)
 
 ### Backend
 
@@ -55,10 +57,11 @@ DX Atendimento é uma aplicação web para gerenciamento de atendimentos e conve
     SECRET_KEY=[sua-chave-secreta]
 4. Execute as migrações
     ```
-    alembic upgrade head
+    python manage.py makemigrations
+    python manage.py migrate
 5. Crie um usuário inicial (administrador)
     ```
-    python -m app.initial_data
+    python manage.py createsuperuser
 ### Frontend
 
 1. Instale as dependências
@@ -75,21 +78,19 @@ DX Atendimento é uma aplicação web para gerenciamento de atendimentos e conve
 ### Backend
 
     cd backend
-    uvicorn main:app --reload
+    python manage.py runserver
     # O servidor estará disponível em http://localhost:8000
 
-Documentação Swagger: http://localhost:8000/docs
+    Para o servidor WebSocket (requer Redis):
+    daphne api.asgi:application
+
+    Admin Django: http://localhost:8000/admin API Endpoints: http://localhost:8000/api/v1/
 
 ### Frontend
 
     cd frontend
     npm run dev
     # A aplicação estará disponível em http://localhost:5173
-
-
-Credenciais de acesso iniciais
-- Email: admin@example.com
-- Senha: admin
 
 # 🌟 Status do Projeto
 
@@ -115,24 +116,24 @@ O projeto está em desenvolvimento ativo. Features implementadas:
 
     Estrutura do Projeto
         dx_atendimento/
-        ├── backend/          # API FastAPI
-        │   ├── alembic/      # Migrações de banco de dados
-        │   ├── app/          # Código principal do backend
-        │   │   ├── api/      # Endpoints da API
-        │   │   ├── core/     # Configurações, segurança
-        │   │   ├── db/       # Configuração do banco de dados
-        │   │   ├── models/   # Modelos SQLAlchemy
-        │   │   └── schemas/  # Modelos Pydantic
+        ├── backend/           # API Django
+        │   ├── api/          # Configuração principal do Django
+        │   ├── apps/         # Aplicações Django
+        │   │   ├── accounts/ # Autenticação e usuários
+        │   │   ├── chats/    # Gestão de conversas
+        │   │   ├── companies/# Gestão de empresas
+        │   │   ├── contacts/ # Gestão de contatos
+        │   │   └── groups/   # Gestão de grupos
         │   └── tests/        # Testes
         └── frontend/         # Aplicação React
             ├── public/       # Arquivos estáticos
-            └── src/          # Código fonte
+            └── src/         # Código fonte
                 ├── components/  # Componentes React reutilizáveis
-                ├── features/    # Features por domínio
-                ├── providers/   # Provedores de contexto
-                ├── routes/      # Configuração de rotas
-                ├── services/    # Serviços de comunicação com API
-                └── styles/      # Estilos e temas
+                ├── features/   # Features por domínio
+                ├── providers/  # Provedores de contexto
+                ├── routes/     # Configuração de rotas
+                ├── services/   # Serviços de comunicação com API
+                └── styles/     # Estilos e temas
 
 Contribuição
 

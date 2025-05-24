@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Box, Snackbar, Alert, IconButton, Tooltip } from '@mui/material';
+import { Snackbar, Alert, IconButton, Tooltip } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import DataTable from '../../../features/admin/components/DataTable';
 import DeleteDialog from '../../../features/admin/components/DeleteDialog';
 import ContactForm from './ContactForm';
 import { Contact } from '../types';
 import AuditInfo from '../../../features/admin/components/AuditInfo';
+import PageContainer from '../../../components/layout/PageContainer';
 import { useAppDispatch, useAppSelector } from '../../../hooks/store';
 import { 
   fetchContacts, 
@@ -41,7 +42,6 @@ const Contacts = () => {
   const loading = useAppSelector((state) => state.ui.loading.fetchContacts);
   const deleteLoading = useAppSelector((state) => state.ui.loading.removeContact);
 
-  // Carregar contatos ao montar o componente
   useEffect(() => {
     dispatch(fetchContacts());
   }, [dispatch]);
@@ -82,7 +82,6 @@ const Contacts = () => {
     dispatch(setSelectedContact(null));
   };
 
-  // Auditoria
   const handleShowAuditInfo = (id: number) => {
     const contact = contacts.find((c) => c.id === id);
     if (contact) {
@@ -102,16 +101,16 @@ const Contacts = () => {
   );
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <PageContainer title="Contatos">
       <DataTable
         columns={columns}
         data={contacts}
-        title="Contatos"
         onAdd={handleAddContact}
         onEdit={handleEditContact}
         onDelete={handleDeleteContact}
         searchField="nome"
         renderCustomActions={renderActionButtons}
+        loading={loading}
       />
 
       <ContactForm
@@ -144,7 +143,7 @@ const Contacts = () => {
           {alertMessage}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 };
 

@@ -140,7 +140,12 @@ const darkThemeOptions: ThemeOptions = {
   ...lightThemeOptions,
   palette: {
     mode: 'dark',
-    ...colors,
+    primary: {
+      main: '#121212', // Cor escura padrão do MUI
+      light: '#2c2c2c',
+      dark: '#000000',
+      contrastText: '#ffffff',
+    },
     background: {
       default: '#1c1c1e',
       paper: '#2c2c2e',
@@ -151,6 +156,38 @@ const darkThemeOptions: ThemeOptions = {
       disabled: '#636366',
     },
   },
+  components: {
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        }
+      }
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundImage: 'none',
+          backgroundColor: 'inherit', // Herda a cor do tema
+          color: 'inherit',
+          '& .MuiListItemIcon-root': {
+            color: 'inherit',
+          },
+          '& .MuiListItemButton-root': {
+            '&:hover': {
+              backgroundColor: 'primary.dark',
+            },
+            '&.Mui-selected': {
+              backgroundColor: 'primary.dark',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 };
 
 // Criação dos temas

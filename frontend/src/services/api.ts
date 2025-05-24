@@ -1,17 +1,22 @@
 import axios from 'axios';
-import { addNotification } from '../store/slices/notificationSlice';
 import { store } from '../store';
+import { logout } from '../store/slices/authSlice';
+import { setAlert } from '../store/slices/uiSlice';
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_API_URL + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true
 });
+
+// Log para debug
+console.log('API Base URL:', import.meta.env.VITE_API_URL);
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -24,54 +29,21 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response) {
-      const { status, data, config } = error.response;
+      const { status, config, data } = error.response;
 
-      // Não mostrar erro 404 para listagens
-      if (status === 404 && config.method === 'get') {
-        const isListEndpoint = [
-          '/empresas/',
-          '/grupos/',
-          '/empresas',
-          '/grupos',  // Adicionando endpoints sem barra
-        ].includes(config.url);
-
-        if (isListEndpoint) {
-          return Promise.resolve({ data: [] });
-        }
-      }
-
-      // Não mostrar erro de autenticação para requisições normais
-      if (status === 401 && !config.url.includes('/login')) {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-        }
+      // Se for erro 401 e não for requisição de login
+      if (status === 401 && !config.url.includes('login')) {
+        store.dispatch(logout());
+        window.location.href = '/login';
         return Promise.reject(error);
       }
 
       // Outros erros mostram notificação
-      let message = 'Ocorreu um erro inesperado';
-      switch (status) {
-        case 403:
-          message = 'Acesso negado: você não tem permissão para realizar esta ação.';
-          break;
-        case 404:
-          message = 'O recurso solicitado não foi encontrado.';
-          break;
-        case 500:
-          message = 'Erro interno do servidor. Tente novamente mais tarde.';
-          break;
-        default:
-          message = data?.message || message;
-      }
-
-      store.dispatch(
-        addNotification({
-          message,
-          type: 'error',
-        })
-      );
+      const message = data?.detail || data?.message || 'Ocorreu um erro inesperado';
+      store.dispatch(setAlert({
+        message: message,
+        type: 'error'
+      }));
     }
     return Promise.reject(error);
   }

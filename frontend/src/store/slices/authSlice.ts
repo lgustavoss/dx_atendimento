@@ -1,117 +1,108 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import api from '../../services/api';
-import { showAlert } from '../utils/alertUtils'; 
-interface User {
-  id: number;
-  email: string;
-  nome: string;
-  is_active: boolean;
-  is_superuser: boolean;
-}
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { login, logout as logoutService, getCurrentUser as getCurrentUserService, changePassword as changePasswordService } from '../../features/auth/services/authService';
+import { setLoading, setAlert } from './uiSlice';
+import { ChangePasswordRequest } from '../../features/users/types';
 
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-}
-
-const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
-  loading: true,
-};
-
+// Thunks
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async ({ email, password }: { email: string, password: string }, { dispatch }) => {
+  async (credentials: { email: string; password: string }, { dispatch }) => {
     try {
-      const data = `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-      
-      const response = await api.post('/auth/login', data, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-      
-      const { access_token } = response.data;
-      localStorage.setItem('token', access_token);
-      
-      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
-      const userResponse = await api.get('/auth/me');
-      return { token: access_token, user: userResponse.data };
-    } catch (error) {
-      showAlert(dispatch, 'Falha ao fazer login. Verifique suas credenciais.', 'error');
+      dispatch(setLoading({ key: 'login', value: true }));
+      const data = await login(credentials);
+      return data;
+    } catch (error: any) {
+      dispatch(setAlert({
+        type: 'error',
+        message: error.response?.data?.detail || 'Erro ao fazer login'
+      }));
       throw error;
+    } finally {
+      dispatch(setLoading({ key: 'login', value: false }));
     }
   }
 );
 
 export const getCurrentUser = createAsyncThunk(
   'auth/getCurrentUser',
-  async (_, { getState, dispatch }) => {
-    const { auth } = getState() as { auth: AuthState };
-    if (!auth.token) throw new Error('Token não encontrado');
-    
+  async (_, { dispatch }) => {
     try {
-      api.defaults.headers.common['Authorization'] = `Bearer ${auth.token}`;
-      const response = await api.get('/auth/me');
-      return response.data;
+      dispatch(setLoading({ key: 'fetchCurrentUser', value: true }));
+      const data = await getCurrentUserService();
+      return data;
     } catch (error) {
-      localStorage.removeItem('token');
       throw error;
+    } finally {
+      dispatch(setLoading({ key: 'fetchCurrentUser', value: false }));
+    }
+  }
+);
+
+export const logoutUser = createAsyncThunk(
+  'auth/logout',
+  async (_, { dispatch }) => {
+    try {
+      await logoutService();
+      dispatch(logout());
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  }
+);
+
+export const changePassword = createAsyncThunk(
+  'auth/changePassword',
+  async (data: ChangePasswordRequest, { dispatch }) => {
+    try {
+      dispatch(setLoading({ key: 'changePassword', value: true }));
+      await changePasswordService(data);
+      dispatch(setAlert({
+        message: 'Senha alterada com sucesso',
+        type: 'success'
+      }));
+    } catch (error: any) {
+      dispatch(setAlert({
+        message: error.response?.data?.detail || 'Erro ao alterar senha',
+        type: 'error'
+      }));
+      throw error;
+    } finally {
+      dispatch(setLoading({ key: 'changePassword', value: false }));
     }
   }
 );
 
 const authSlice = createSlice({
   name: 'auth',
-  initialState,
+  initialState: {
+    user: null,
+    token: localStorage.getItem('access_token'),
+    isAuthenticated: !!localStorage.getItem('access_token')
+  },
   reducers: {
-    setToken(state, action: PayloadAction<string | null>) {
-      state.token = action.payload;
-    },
-    setUser(state, action: PayloadAction<User | null>) {
-      state.user = action.payload;
-    },
-    logout(state) {
-      state.token = null;
+    logout: (state) => {
       state.user = null;
+      state.token = null;
       state.isAuthenticated = false;
-    },
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+    }
   },
   extraReducers: (builder) => {
     builder
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-      })
       .addCase(loginUser.fulfilled, (state, action) => {
-        state.token = action.payload.token;
-        state.user = action.payload.user;
+        const { access, user } = action.payload;
+        state.token = access;
+        state.user = user;
         state.isAuthenticated = true;
-        state.loading = false;
-      })
-      .addCase(loginUser.rejected, (state) => {
-        state.loading = false;
-      })
-      .addCase(getCurrentUser.pending, (state) => {
-        state.loading = true;
+        localStorage.setItem('access_token', access);
       })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isAuthenticated = true;
-        state.loading = false;
-      })
-      .addCase(getCurrentUser.rejected, (state) => {
-        state.user = null;
-        state.token = null;
-        state.isAuthenticated = false;
-        state.loading = false;
       });
-  },
+  }
 });
 
-export const { setToken, setUser, logout } = authSlice.actions;
+export const { logout } = authSlice.actions;
 export default authSlice.reducer;

@@ -13,8 +13,8 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../providers/AuthProvider';
-import { useAppSelector } from '../../../hooks/store';
+import { useAppDispatch, useAppSelector } from '../../../hooks/store';
+import { loginUser } from '../../../store/slices/authSlice';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -22,37 +22,22 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Usar o loading do estado global ao invés de um estado local
-  const loading = useAppSelector(state => state.ui.loading.login);
-  
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
-
-  // Obter o caminho de retorno após o login, se existir
+  const loading = useAppSelector(state => state.ui.loading.login);
   const from = location.state?.from?.pathname || '/';
-
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        // Adicione um pequeno atraso para garantir que o estado seja atualizado
-        setTimeout(() => {
-          navigate(from, { replace: true });
-        }, 100);
-      } else {
-        setError('Email ou senha inválidos');
-      }
+      await dispatch(loginUser({ email, password })).unwrap();
+      navigate(from, { replace: true });
     } catch (err) {
-      setError('Ocorreu um erro durante o login. Tente novamente.');
-      console.error(err);
+      setError('Email ou senha incorretos. Por favor, tente novamente.');
+      console.error('Erro no login:', err);
     }
   };
 
@@ -118,7 +103,7 @@ const Login = () => {
                   <InputAdornment position="end">
                     <IconButton
                       aria-label="toggle password visibility"
-                      onClick={handleClickShowPassword}
+                      onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                       disabled={loading}
                     >

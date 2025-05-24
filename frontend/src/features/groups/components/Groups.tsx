@@ -14,6 +14,7 @@ import {
 } from '../../../store/slices/groupsSlice';
 import { clearAlert } from '../../../store/slices/uiSlice';
 import { useAuth } from '../../../providers/AuthProvider';
+import PageContainer from '../../../components/layout/PageContainer';
 
 const columns = [
   { id: 'id', label: 'ID', minWidth: 50 },
@@ -96,11 +97,10 @@ const Groups = () => {
   );
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <PageContainer title="Grupos">
       <DataTable
         columns={columns}
         data={groups}
-        title="Grupos"
         onAdd={handleAddGroup}
         onEdit={handleEditGroup}
         onDelete={handleDeleteGroup}
@@ -139,7 +139,7 @@ const Groups = () => {
           {alertMessage}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 };
 
